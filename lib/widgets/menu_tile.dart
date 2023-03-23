@@ -28,7 +28,7 @@ class MenuTile extends StatelessWidget {
             child: Text(
               title,
               style: const TextStyle(
-                fontSize: 24,
+                fontSize: 42,
                 fontWeight: FontWeight.bold,
                 color: Colors.white,
               ),
