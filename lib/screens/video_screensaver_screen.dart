@@ -1,6 +1,6 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'dart:convert';
 import 'package:video_player/video_player.dart';
 
 class VideoScreensaverScreen extends StatefulWidget {
@@ -16,43 +16,35 @@ class _VideoScreensaverScreenState extends State<VideoScreensaverScreen> {
   @override
   void initState() {
     super.initState();
-    _getVideoPaths('assets/video').then((paths) {
+    _loadVideoPaths().then((paths) {
       setState(() {
         videoPaths = paths;
         if (videoPaths.isNotEmpty) {
-          _initializeController();
+          _initializeVideoPlayer();
         }
       });
     });
   }
 
-  @override
-  void dispose() {
-    _controller?.dispose();
-    super.dispose();
-  }
-
-  Future<List<String>> _getVideoPaths(String path) async {
+  Future<List<String>> _loadVideoPaths() async {
     final manifestContent = await rootBundle.loadString('AssetManifest.json');
     final manifestMap = json.decode(manifestContent) as Map<String, dynamic>;
-
-    List<String> paths = [];
-    final assetPaths = manifestMap.keys
-        .where((key) => key.startsWith(path) && key.endsWith('.mp4'))
+    return manifestMap.keys
+        .where(
+            (key) => key.startsWith('assets/videos/') && key.endsWith('.mp4'))
         .toList();
-
-    paths.addAll(assetPaths);
-
-    return paths;
   }
 
-  void _initializeController() {
+  void _initializeVideoPlayer() {
+    _controller?.dispose();
     _controller = VideoPlayerController.asset(videoPaths[_currentVideoIndex])
       ..initialize().then((_) {
-        setState(() {});
+        setState(() {
+          _controller!.play();
+        });
       })
-      ..setLooping(false)
-      ..play();
+      ..setLooping(false);
+
     _controller!.addListener(() {
       if (_controller!.value.position == _controller!.value.duration) {
         _playNextVideo();
@@ -61,23 +53,42 @@ class _VideoScreensaverScreenState extends State<VideoScreensaverScreen> {
   }
 
   void _playNextVideo() {
-    _controller?.dispose();
     setState(() {
       _currentVideoIndex = (_currentVideoIndex + 1) % videoPaths.length;
-      _initializeController();
     });
+    _initializeVideoPlayer();
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
+    _controller?.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Center(
-        child: _controller != null && _controller!.value.isInitialized
-            ? AspectRatio(
-                aspectRatio: _controller!.value.aspectRatio,
-                child: VideoPlayer(_controller!),
-              )
-            : CircularProgressIndicator(),
+      backgroundColor: Colors.black,
+      body: GestureDetector(
+        onTap: () {
+          Navigator.pop(context); // Dismiss the screensaver on tap
+        },
+        child: Stack(
+          children: [
+            if (_controller != null && _controller!.value.isInitialized)
+              SizedBox.expand(
+                child: FittedBox(
+                  fit: BoxFit.cover,
+                  child: SizedBox(
+                    width: _controller!.value.size.width,
+                    height: _controller!.value.size.height,
+                    child: VideoPlayer(_controller!),
+                  ),
+                ),
+              ),
+            // Add any custom UI elements on top of the video, if needed
+          ],
+        ),
       ),
     );
   }
